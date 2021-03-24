@@ -95,6 +95,8 @@ Public Class CareHubFIleTidy
     Private Sub IntervalTimer_Elapsed(ByVal state As Object)
 
 
+        Dim intDuplicates As Integer = 0
+
         Try
 
 
@@ -187,22 +189,45 @@ Public Class CareHubFIleTidy
 
                         If System.IO.File.Exists(newFolderPath & "\" & fri.Name) Then
                             'The file exists rename
-                            Dim strNewFileName As String = Replace(fri.Name, fri.Extension, "") & "_1" & fri.Extension
+
+                            intDuplicates += 1
+
+                            ' If duplicates more than 1 then simply delete the file
+                            If intDuplicates > 1 Then
+                                Dim myLog As New EventLog()
+                                'myLog = New EventLog()
+                                If Not myLog.SourceExists("CareHubFileArchive") Then
+                                    myLog.CreateEventSource("CareHubFileArchive", "CareHub File Archive Log")
+                                End If
+
+                                myLog.Source = "CareHubFileArchive"
+                                myLog.WriteEntry("CareHub File Archive Log", "Deleting file : " & fri.Name,
+                                    EventLogEntryType.Information)
+
+                                fri.Delete()
+                            Else
+
+                                Dim strNewFileName As String = Replace(fri.Name, fri.Extension, "") & "_1" & fri.Extension
 
 
-                            Dim myLog As New EventLog()
-                            'myLog = New EventLog()
-                            If Not myLog.SourceExists("CareHubFileArchive") Then
-                                myLog.CreateEventSource("CareHubFileArchive", "CareHub File Archive Log")
+                                Dim myLog As New EventLog()
+                                'myLog = New EventLog()
+                                If Not myLog.SourceExists("CareHubFileArchive") Then
+                                    myLog.CreateEventSource("CareHubFileArchive", "CareHub File Archive Log")
+                                End If
+
+                                myLog.Source = "CareHubFileArchive"
+                                myLog.WriteEntry("CareHub File Archive Log", "Renaming file to : " & strNewFileName,
+                                    EventLogEntryType.Information)
+
+
+
+                                fri.MoveTo(newFolderPath & "\" & strNewFileName)
                             End If
 
-                            myLog.Source = "CareHubFileArchive"
-                            myLog.WriteEntry("CareHub File Archive Log", "Renaming file to : " & strNewFileName,
-                                EventLogEntryType.Information)
+                            ' If it does not fail the above we reset the duplicates back to 0
+                            intDuplicates = 0
 
-
-
-                            fri.MoveTo(newFolderPath & "\" & strNewFileName)
                         Else
                             'the file doesn't exist
                             fri.MoveTo(newFolderPath & "\" & fri.Name)
